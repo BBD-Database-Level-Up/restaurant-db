@@ -1,0 +1,123 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env: 
+  SQLFLUFF_DIALECT: mysql
+  DOCKER_IMAGE: redgate/flyway
+	SCHEMAS: public
+  
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  Continuous-Integration-Build:
+    name: Continuous Integration Build
+    runs-on: ubuntu-20.04
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.0
+               
+      - name: Continuous Integration Flyway Clean Migrate
+        run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_BUILD_URL }}"
+          -user="${{ secrets.DB_BUILD_USERNAME }}"
+          -password="${{ secrets.DB_BUILD_PASSWORD }}"
+          -cleanDisabled=false clean migrate -schemas="${{ env.SCHEMAS }}"
+      - name: Flyway Info
+        run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_BUILD_URL }}"
+          -user="${{ secrets.DB_BUILD_USERNAME }}"
+          -password="${{ secrets.DB_BUILD_PASSWORD }}" 
+          info -schemas="${{ env.SCHEMAS }}"
+ 
+      - name: Flyway Info Production
+        run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_PROD_URL }}"
+          -user="${{ secrets.DB_PROD_USERNAME }}" 
+          -password="${{ secrets.DB_PROD_PASSWORD }}"
+          info -schemas="${{ env.SCHEMAS }}"
+ 
+      - name: Flyway Check
+        run: >-
+          docker run --rm \
+            --volume ${{ github.workspace }}/migrations:/flyway/sql:ro \
+            --volume ${{ github.workspace }}/reports:/flyway/reports \
+            -e ${{ secrets.FLYWAY_LICENSE_KEY }} \
+            "${{ env.DOCKER_IMAGE }}" \
+            -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}" \
+            -url="${{ secrets.DB_PROD_URL }}" \
+            -user="${{ secrets.DB_PROD_USERNAME }}" \
+            -password="${{ secrets.DB_PROD_PASSWORD }}" \
+            -baselineOnMigrate=true check -changes -drift -dryrun -schemas="${{ env.SCHEMAS }}" -outOfOrder=true -connectRetries=10 \
+            -check.buildUrl="${{ secrets.DB_BUILD_URL }}" \
+            -check.buildUser="${{ secrets.DB_BUILD_USERNAME }}" \
+            -check.buildPassword="${{ secrets.DB_BUILD_PASSWORD }}" \
+            -reportFilename="/flyway/reports/report.html"
+            
+      - name: Upload report
+        uses: actions/upload-artifact@v3
+        with:
+          name: Database Report
+          path: reports/
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    needs : Continuous-Integration-Build
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - run: >-    
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"  
+          info -schemas="${{ env.SCHEMAS }}"
+      - run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"   
+          migrate -schemas="${{ env.SCHEMAS }}" -outOfOrder=true 
+      - run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"   
+          info -schemas="${{ env.SCHEMAS }}"

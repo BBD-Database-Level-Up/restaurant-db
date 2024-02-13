@@ -1,4 +1,3 @@
-# restaurant-db
 # Setting Up the Working Restaurant Database from Scratch
 
 This guide will walk you through the process of setting up a relational database on AWS cloud, using Terraform for infrastructure deployment, Flyway for database change management, and automating the deployment process for continuous integration and continuous deployment (CI/CD). The database is designed to allow restaurants to keep track of waiters, orders, and popular meals.

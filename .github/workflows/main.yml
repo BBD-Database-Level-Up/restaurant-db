@@ -1,34 +1,31 @@
-# This is a basic workflow to help you get started with Actions
-name: Connect to an AWS role from a GitHub repository
-
-# Controls when the action will run. Invokes the workflow on push events but only for the main branch
+name: 'PostgreSQL GitHub DevOps Pipeline'
+ 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+    branches:
+      - tawanda
+      
 env:
-  
-  AWS_REGION : "eu-west-1" #Change to reflect your Region
+  SQLFLUFF_DIALECT: postgres
+  DOCKER_IMAGE: redgate/flyway
+  SCHEMAS: public
 
-# Permission can be added at job level or workflow level    
-permissions:
-      id-token: write   # This is required for requesting the JWT
-      contents: read    # This is required for actions/checkout
+
 jobs:
-  AssumeRoleAndCallIdentity:
-    runs-on: ubuntu-latest
+  Continuous-Integration-Build:
+    name: Continuous Integration Build
+    runs-on: ubuntu-20.04
+ 
     steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v1.7.0
-        with:
-          role-to-assume: arn:aws:iam::363615071302:role/GitHub-CICD-restuarantDB #change to reflect your IAM role’s ARN
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: "eu-west-1" 
-      # Hello from AWS: WhoAmI
-      - name: Sts GetCallerIdentity
-        run: |
-          aws sts get-caller-identity
+      - name: Checkout
+        uses: actions/checkout@v3.0.0
+               
+      - name: Continuous Integration Flyway Clean Migrate
+        run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -url="${{ secrets.DB_URL }}"
+          -user="${{ secrets.DB_USERNAME }}"
+          -password="${{ secrets.DB_PASSWORD }}"
+          -cleanDisabled=false info

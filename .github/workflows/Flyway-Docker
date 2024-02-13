@@ -6,14 +6,13 @@ on:
       - main
       
 env:
-    SQLFLUFF_DIALECT: postgres
+    SQLFLUFF_DIALECT: mysql
     DOCKER_IMAGE: redgate/flyway
 	SCHEMAS: public
  
 jobs:   
   Deploy-Test:
     name: Deploy Test
-    needs: Continuous-Integration-Build
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3.0.0

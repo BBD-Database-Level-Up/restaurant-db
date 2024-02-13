@@ -1,0 +1,48 @@
+name: 'Flyway Docker'
+ 
+on:
+  push:
+    branches:
+      - main
+      
+env:
+    SQLFLUFF_DIALECT: postgres
+    DOCKER_IMAGE: redgate/flyway
+	SCHEMAS: public
+ 
+jobs:   
+  Deploy-Test:
+    name: Deploy Test
+    needs: Continuous-Integration-Build
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.0.0
+      
+   
+      - run: >-    
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"  
+          info -schemas="${{ env.SCHEMAS }}"
+       - run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"   
+          migrate -schemas="${{ env.SCHEMAS }}" -outOfOrder=true 
+      - run: >-
+          docker run --rm
+          --volume ${{ github.workspace }}/migrations:/flyway/sql:ro
+          "${{ env.DOCKER_IMAGE }}"
+          -licenseKey="${{ secrets.FLYWAY_LICENSE_KEY }}"
+          -url="${{ secrets.DB_TEST_URL }}"
+          -user="${{ secrets.DB_TEST_USERNAME }}"
+          -password="${{ secrets.DB_TEST_PASSWORD }}"   
+          info -schemas="${{ env.SCHEMAS }}"

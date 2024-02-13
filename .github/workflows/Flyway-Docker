@@ -3,7 +3,7 @@ name: 'Flyway Docker'
 on:
   push:
     branches:
-      - main
+      - tawanda
       
 env:
     SQLFLUFF_DIALECT: mysql

@@ -16,7 +16,6 @@ on:
 env: 
   SQLFLUFF_DIALECT: mysql
   DOCKER_IMAGE: redgate/flyway
-	SCHEMAS: public
   
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
